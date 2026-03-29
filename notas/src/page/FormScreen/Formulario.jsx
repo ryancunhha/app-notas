@@ -11,24 +11,25 @@ export default function FormScreen({ route, navigation }) {
     // DEPois de tira foto ver uma preview
 
     // FONTE
-    const { fontSize } = route.params;
+    const { fontSize, editando } = route.params;
 
     // DADOS
-    const [nome, setNome] = useState("");
-    const [numero, setNumero] = useState("");
-    const [tipo, setTipo] = useState("");
-    const [tipoPersonalizado, setTipoPersonalizado] = useState(""); // Novo estado
+    const [nome, setNome] = useState(editando ? editando.nome : "");
+    const [numero, setNumero] = useState(editando ? editando.numero : "");
+    const [tipo, setTipo] = useState(editando ? editando.tipo : "");
+    const [tipoPersonalizado, setTipoPersonalizado] = useState(
+        editando && !["Entrada", "Saída", "Produção"].includes(editando.tipo) ? editando.tipo : ""
+    );
     const [registrosExistentes, setRegistrosExistentes] = useState([]);
 
     // foto Permissões e Ref
-    const [foto, setFoto] = useState(null);
+    const [foto, setFoto] = useState(editando ? editando.foto : null);
     const [cameraVisivel, setCameraVisivel] = useState(false);
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef(null);
 
     const tipos = ["Entrada", "Saída", "Produção", "Personalizado"];
 
-    // BUSCAR DADOS PARA VALIDAR DUPLICADOS
     useEffect(() => {
         const carregarParaValidar = async () => {
             const dados = await AsyncStorage.getItem("@minha_tabela_dados");
@@ -46,25 +47,61 @@ export default function FormScreen({ route, navigation }) {
         }
     };
 
-    const validarEAvancar = () => {
+    // pode inves de ir para calculadora ir direto pra tabela ser for editação?
+    const validarEAvancar = async () => {
         let tipoFinal = tipo === "Personalizado" ? tipoPersonalizado : tipo;
         if (!tipoFinal) tipoFinal = "Todos";
 
-        const jaExisteNome = registrosExistentes.some(r => r.nome.toLowerCase() === nome.toLowerCase());
-        const jaExisteNumero = registrosExistentes.some(r => r.numero === numero);
+        const jaExisteNome = registrosExistentes.some(r =>
+            r.nome.toLowerCase() === nome.toLowerCase() && r.id !== editando?.id
+        );
+        const jaExisteNumero = registrosExistentes.some(r =>
+            r.numero === numero && r.id !== editando?.id
+        );
 
-        if (jaExisteNome) {
-            // DEIXAR TEMPORARIO
-            Alert.alert("Atenção", "Este NOME já está cadastrado!");
-            return;
-        }
-        if (jaExisteNumero) {
-            // DEIXAR TEMPORARIO
-            Alert.alert("Atenção", "Este NÚMERO já está cadastrado!");
+        if (jaExisteNome || jaExisteNumero) {
+            Alert.alert("Atenção", "Nome ou Número já está cadastrado!");
             return;
         }
 
-        navigation.navigate("Calculadora", { nome, numero, tipo: tipoFinal, foto, fontSize });
+        // --- LÓGICA DE SALVAR DIRETO SE FOR EDIÇÃO ---
+        if (editando) {
+            // ainda estar trocando todos da tabela, 
+            try {
+                const dados = await AsyncStorage.getItem("@minha_tabela_dados");
+                let lista = dados ? JSON.parse(dados) : [];
+
+                // Atualizamos o item na lista mantendo o cálculo antigo
+                const listaAtualizada = lista.map(item => {
+                    if (item.id === editando.id) {
+                        return {
+                            ...item, // mantém o que já tinha (inclusive o cálculo)
+                            nome: nome,
+                            numero: numero,
+                            tipo: tipoFinal,
+                            foto: foto,
+                        };
+                    }
+
+                    return item;
+                });
+
+                await AsyncStorage.setItem("@minha_tabela_dados", JSON.stringify(listaAtualizada));
+
+                // Volta direto para a Tabela limpando o rastro do formulário
+                navigation.reset({
+                    index: 1,
+                    routes: [{ name: "Home" }, { name: "Tabela" }],
+                });
+                return; // Para não executar o código da calculadora abaixo
+            } catch (e) {
+                Alert.alert("Erro", "Não foi possível atualizar os dados.");
+                return;
+            }
+        }
+
+        // Se NÃO for edição, segue o fluxo normal para a calculadora
+        navigation.navigate("Calculadora", { nome, numero, tipo: tipoFinal, foto, fontSize, editandoId: editando ? editando.id : null, calculoAntigo: editando ? editando.calculoFinal : "" });
     };
 
     return (

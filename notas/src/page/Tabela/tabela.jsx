@@ -3,15 +3,16 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert } from
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Tabela({ navigation }) {
-   
+    /*
+    Agora tá certo o tabela e home
+    */
+
     const [listaGeral, setListaGeral] = useState([]);
     const [filtroAtivo, setFiltroAtivo] = useState("Todos");
 
-    // agora e para adicionar aquele input do personalizado aqui ser tiver 
+    // já funcionou não precisa mexer aqui
     const categorias = ["Todos", "Entrada", "Saída", "Produção"];
 
-    // pergunta ele vai colocar na lista ou vai impedir de colocar na lista?, que ser colocar roupa ai coloca roupa e para colocar na lista roupa 
-    // deixa testei aqui e funcionu e assim mesmo ok
     const categoriasExtras = [...new Set(listaGeral.map(item => item.tipo))];
 
     const todasCategorias = [
@@ -58,19 +59,46 @@ export default function Tabela({ navigation }) {
         // Aqui depois você coloca a lógica de gerar PDF ou Excel
     };
 
+    // Agora essa parte chata aqui que e a edição
+    // poder editar: nome, numero, tipo,
+    // no calculo ele vai levar novamente para calculadora mais do numero salvo e poder fazer novamente os calculos
+    // e onde estar "sem foto" pode continuar sem foto mais colocar um botão de + para adicionar uma foto ou levar para o formulariio para tirar a foto lá
     const renderItem = ({ item }) => (
-        <View style={styles.linha}>
-            <View >
-                {item.foto ? (
-                    <Image source={{ uri: item.foto }} />
-                ) : (
-                    <Text >Sem foto</Text>
-                )}
-            </View>
+        <View >
+            {/* BLOCO 1 */}
+            <TouchableOpacity onPress={() => navigation.navigate("Formulario", { editando: item, fontSize: item.fontSize })}>
+                {/* FOTO */}
+                <View>
+                    {item.foto ? (
+                        <Image source={{ uri: item.foto }} />
+                    ) : (
+                        <View>
+                            <Text>+ Foto</Text>
+                        </View>
+                    )}
+                </View>
 
-            <Text >{item.nome}</Text>
-            <Text >{item.numero}</Text>
-            <Text >{item.calculoFinal}</Text>
+                {/* Nome */}
+                <Text >{item.nome}</Text>
+
+                {/* NUMERo */}
+                <Text >{item.numero}</Text>
+
+                <Text>
+                    ✏️
+                </Text>
+            </TouchableOpacity>
+
+            {/* Bloco 2 */}
+            <TouchableOpacity onPress={() => navigation.navigate("Calculadora", { nome: item.nome, numero: item.numero, tipo: item.tipo, foto: item.foto, fontSize: item.fontSize, calculoAntigo: item.calculoFinal, editandoId: item.id })} >
+                <Text>
+                    {item.calculoFinal}
+                </Text>
+                
+                <Text>
+                    ✏️
+                </Text>
+            </TouchableOpacity>
         </View>
     );
 
@@ -96,6 +124,7 @@ export default function Tabela({ navigation }) {
             </View>
 
             {/* LISTA DINÂMICA */}
+            {/* AGORA  */}
             <FlatList data={dadosExibidos} keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()} renderItem={renderItem} ListEmptyComponent={<Text >Nenhum item encontrado.</Text>} />
 
             {/* BOTÕES DE BAIXO */}

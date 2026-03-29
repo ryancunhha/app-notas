@@ -27,9 +27,9 @@ export default function Calculadora({ route, navigation }) {
     */
 
     // dados do formulario
-    const { nome, numero, tipo, fontSize, foto } = route.params;
+    const { nome, numero, tipo, fontSize, foto, editandoId, calculoAntigo } = route.params;
 
-    const [calculo, setCalculo] = useState("");
+    const [calculo, setCalculo] = useState(calculoAntigo || "");
     const [cursorPos, setCursorPos] = useState(0); // Para saber onde o usuário clicou
 
     const calculoRef = useRef("");
@@ -192,22 +192,36 @@ export default function Calculadora({ route, navigation }) {
             return;
         }
 
-        const novaAnotacao = { fontSize, nome, numero, tipo, foto, calculoFinal: calculo };
+        const idUnico = editandoId || Date.now().toString();
+
+        const novaAnotacao = { id: idUnico, fontSize, nome, numero, tipo, foto, calculoFinal: calculo };
 
         try {
             // 2. Busca o que já estava salvo antes
             const dadosAntigos = await AsyncStorage.getItem("@minha_tabela_dados");
             const listaAtualizada = dadosAntigos ? JSON.parse(dadosAntigos) : [];
 
-            // 3. Adiciona a nova anotação na lista
-            listaAtualizada.push(novaAnotacao);
+            const index = listaAtualizada.findIndex(item => item.id === idUnico);
+            if (index !== -1) {
+                // Se o ID já existe na lista, a gente substitui os dados (Edição)
+                listaAtualizada[index] = novaAnotacao;
+            } else {
+                // Se o ID não existe, a gente adiciona no final (Novo Cadastro)
+                listaAtualizada.push(novaAnotacao);
+            }
 
             // 4. Salva a lista atualizada de volta no celular
             await AsyncStorage.setItem("@minha_tabela_dados", JSON.stringify(listaAtualizada));
 
             // 5. Vai para a tabela (sem precisar passar os dados brutos, 
             // pois ela vai ler do banco sozinha)
-            navigation.navigate("Tabela");
+            navigation.reset({
+                index: 1,
+                routes: [
+                    { name: "Home" },   // Tela que fica "atrás" (índice 0)
+                    { name: "Tabela" } // Tela que aparece agora (índice 1)
+                ],
+            });
         } catch (e) {
             Alert.alert("Erro", "Não foi possível salvar os dados");
             console.log(e);
