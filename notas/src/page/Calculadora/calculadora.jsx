@@ -1,413 +1,229 @@
-import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, FlatList, TextInput } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useState, useRef, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 
 export default function Calculadora({ route, navigation }) {
-    const { tipo, numero, nome, foto, fontSize, resultadoAnterior, isEditing, id } = route.params || {} // <--- tem trazer a fonte e esatr puxadno tudo ok
+    // Puxar NOME, NUMERO, TIPO, FONTE, FOTO
+    // Fazer calculadora com: +, -, /, *, igual, C -> Limpar Tudo, Botão de apagar -> apagar 1 por 1 e pode ficar precisonando
+    // teclas 0,1,2,3,4,5,6,7,8,9 e ,
+    // tamanho maximo 15 digitos
+    // pode 000000000000000
+    // pode com decimal 10 digitos 0,0000000000  
+    // salvar completo -> nome, numero, tipo, fonte, foto, calculo
+    // pode seleciona onde estar exemplo tem 00000000 ai quero ir pro ultimo poder clicar para apagar onde eu quero
 
-    const [valorAtual, setValorAtual] = useState("0")
-    const [valorAnterior, setValorAnterior] = useState(null)
-    const [operacao, setOperacao] = useState(null)
-    
-    // aarmazenda historico de calculos
-    const [contaTexto, setContaTexto] = useState("")
-    const [historicoSessao, setHistoricoSessao] = useState("")
-
-    const [historicoProduto, setHistoricoProduto] = useState([])
-    const [modalHistorico, setModalHistorico] = useState(false)
-
-    const abrirHistoricoCompleto = () => {
-        setModalHistorico(true)
-    }
-
-    useEffect(() => {
-        const buscarHistorico = async () => {
-            const storage = await AsyncStorage.getItem("@anotacoes")
-            if (storage) {
-                const lista = JSON.parse(storage)
-
-                const filtrado = lista
-                    .filter(item => item.nome === nome && item.tipo === tipo).reverse()
-                    .slice(0, 3)
-                setHistoricoProduto(filtrado)
-            }
-        }
-        buscarHistorico()
-    }, [nome, tipo])
-
-    useEffect(() => {
-        if (resultadoAnterior) {
-            const valorTratado = resultadoAnterior.toString().replace(",", ".")
-            setValorAtual(valorTratado)
-        }
-    }, [resultadoAnterior])
-
-    const formatarMilhar = (num) => {
-        if (num === undefined || num === null) return "0"
-        let [inteiro, decimal] = num.split(".")
-
-        inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-        return decimal !== undefined ? `${inteiro},${decimal}` : inteiro
-    }
-
-    const digitarNumero = (num) => {
-        if (valorAtual.replace(".", "").length >= 15) return
-        setValorAtual(prev => (prev === "0" && num !== "." ? String(num) : prev + num))
-    }
-
-    {/* colocar depois o clique para selecionar 100,00 invez de apagar tudo so clica onde que editar  */}
-    const selecionarOperacao = (op) => {
-        setOperacao(op)
-        setValorAnterior(valorAtual)
-        setContaTexto(`${valorAtual} ${op}`) // formato da exibição dos calculsos passado  AQUI ------
-        setValorAtual("0")
-    }
-    
-    {/* apagar 1 por 1 */}
-    const apagarUm = () => {
-        if (valorAtual.length === 1) {
-            setValorAtual("0")
-        } else {
-            setValorAtual(valorAtual.slice(0, -1))
-        }
-    }
-
-    // teste
-    const calcular = () => {
-        if (!operacao || valorAnterior === null) return
-
-        const atual = parseFloat(valorAtual)
-        const anterior = parseFloat(valorAnterior)
-        let resultado = 0
-
-        switch (operacao) {
-            case "+": resultado = anterior + atual; break;
-            case "-": resultado = anterior - atual; break;
-            case "×": resultado = anterior * atual; break;
-            case "÷": resultado = atual === 0 ? 0 : anterior / atual; break;
-        }
-
-        const formatado = Number(resultado.toFixed(3)).toString()
-        const contaFinalizada = `${valorAnterior} ${operacao} ${valorAtual} = ${formatado}`
-
-        setHistoricoSessao(prev => [contaFinalizada, ...prev])
-        setContaTexto("")
-        setValorAtual(formatado)
-        setOperacao(null)
-        setValorAnterior(null)
-    }
-    
-    {/* limpar tudo */}
-    const limpar = () => {
-        setValorAtual("0")
-        setValorAnterior(null)
-        setOperacao(null)
-        setContaTexto("")
-        setHistoricoSessao([])
-    }
-
-    {/* salvar o historico inteiro */}
-    const finalizarAnotacao = async () => {
-        try {
-            const storage = await AsyncStorage.getItem("@anotacoes")
-            
-            let lista = storage ? JSON.parse(storage) : []
-
-            const valorParaSalvar = parseFloat(valorAtual).toFixed(3).replace(".", ",")
-
-            // adição no storage AQUI -------------- 
-            const itemEditado = {
-                id: id || Date.now().toString(),
-                tipo, numero, nome, foto, 
-                resultado: valorParaSalvar,
-                contaFeita: historicoSessao,
-                data: new Date().toLocaleDateString("pt-BR")
-            }
-
-            if (isEditing && id) {
-                lista = lista.map(item => item.id === id ? itemEditado : item)
-            } else {
-                lista.push(itemEditado)
-            }
-
-            await AsyncStorage.setItem("@anotacoes", JSON.stringify(lista))
-            navigation.navigate("Tabela")
-        } catch (e) {
-            Alert.alert("Erro", "Falha ao salvar.")
-        }
-    }
-
-
-    return (
-        <View style={styles.container}>
-            {/* informacao do que esat editando */}
-            <View style={styles.header}>
-                <Text style={[styles.headerTxt, { fontSize: fontSize - 6 }]}>
-                    {isEditing ? (
-                        <Text style={{ color: "#FF9800" }}>
+    // depois de fazer a tabela feita, poder editar o numero Por enquanto so adicionar 
+    /*
+    deixar salvo aqui para não esquecer kkk
+    {Ediatndo ? (
+                        <Text style={{ fontSize }}>
                             📝 EDITANDO: {tipo} {nome} (Nº {numero})
                         </Text>
                     ) : (
-                        <Text>
+                        <Text style={{ fontSize }}>
                             + ADIÇÃO: {tipo} {nome} (Nº {numero})
                         </Text>
                     )}
-                </Text>
+    */
 
+    // dados do formulario
+    const { nome, numero, tipo, fontSize, foto } = route.params;
+
+    const [calculo, setCalculo] = useState("");
+    const [cursorPos, setCursorPos] = useState(0); // Para saber onde o usuário clicou
+
+    const calculoRef = useRef(calculo);
+    const cursorPosRef = useRef(cursorPos);
+    const intervalRef = useRef(null); // Para o botão de apagar segurado
+
+    // Mantém as referências atualizadas sempre que o estado mudar
+    useEffect(() => {
+        calculoRef.current = calculo;
+        cursorPosRef.current = cursorPos;
+    }, [calculo, cursorPos]);
+
+    // Funções da Calculadora
+    const inserirCaractere = (char) => {
+        const operadoresPermitidos = ["+", "-", "×", "÷"];
+        const ehOperador = operadoresPermitidos.includes(char);
+        const ehVirgula = char === ",";
+
+        let textoAtual = calculoRef.current;
+        const posAtual = cursorPosRef.current;
+
+        // 1. Identificar o bloco do número atual
+        const parteAntes = textoAtual.slice(0, posAtual);
+        const parteDepois = textoAtual.slice(posAtual);
+
+        const inicioNum = Math.max(
+            parteAntes.lastIndexOf("+"), parteAntes.lastIndexOf("-"),
+            parteAntes.lastIndexOf("×"), parteAntes.lastIndexOf("÷")
+        );
+        const buscaFim = parteDepois.search(/[+\-×÷]/);
+        const fimNum = buscaFim === -1 ? textoAtual.length : posAtual + buscaFim;
+
+        const blocoAtual = textoAtual.slice(inicioNum + 1, fimNum);
+
+        // --- REGRAS DE LIMITE ---
+        if (!ehOperador) {
+            const apenasNumeros = blocoAtual.replace(/[^0-9]/g, "");
+            const temVirgula = blocoAtual.includes(",");
+
+            // REGRA: Máximo 15 dígitos no bloco (inteiro + decimal)
+            if (apenasNumeros.length >= 15 && !ehVirgula) return;
+
+            // REGRA: Máximo 10 decimais após a vírgula
+            if (temVirgula && !ehVirgula) {
+                const decimal = blocoAtual.split(",")[1] || "";
+                const indiceVirgulaGlobal = inicioNum + 1 + blocoAtual.indexOf(",");
+                if (decimal.length >= 10 && posAtual > indiceVirgulaGlobal) return;
+            }
+            if (temVirgula && ehVirgula) return;
+        }
+
+        // --- VALIDAÇÕES DE SEGURANÇA ---
+        const ultimoChar = textoAtual.slice(posAtual - 1, posAtual);
+        if (["+", "-", "×", "÷", ","].includes(ultimoChar) && (ehOperador || ehVirgula)) return;
+        if (textoAtual.length === 0 && ["+", "×", "÷", ","].includes(char)) return;
+
+        // --- INSERÇÃO + MÁSCARA (MILHAR . E DECIMAL ,) ---
+        let novoTextoRaw = textoAtual.slice(0, posAtual) + char + textoAtual.slice(posAtual);
+
+        const aplicarMascaraBR = (valor) => {
+            return valor.split(/([+\-×÷])/).map(parte => {
+                if (operadoresPermitidos.includes(parte) || parte === "") return parte;
+
+                let [inteiro, decimal] = parte.split(",");
+                // Limpa pontos de milhar antigos para reajustar
+                inteiro = inteiro.replace(/\./g, "");
+
+                // Adiciona ponto a cada 3 dígitos (Milhar)
+                const inteiroFormatado = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+                return decimal !== undefined ? `${inteiroFormatado},${decimal}` : inteiroFormatado;
+            }).join("");
+        };
+
+        const textoFinal = aplicarMascaraBR(novoTextoRaw);
+        setCalculo(textoFinal);
+
+        // Ajuste do cursor para não pular com os pontos automáticos
+        const diferenca = textoFinal.length - textoAtual.length;
+        setCursorPos(posAtual + (diferenca > 0 ? diferenca : 1));
+    };
+
+    const apagarUm = () => {
+        const textoAtual = calculoRef.current;
+        const posAtual = cursorPosRef.current;
+
+        if (posAtual > 0) {
+            const novoTexto = textoAtual.slice(0, posAtual - 1) + textoAtual.slice(posAtual);
+
+            setCalculo(novoTexto);
+            setCursorPos(posAtual - 1);
+            cursorPosRef.current = posAtual - 1;
+            calculoRef.current = novoTexto;
+        }
+    };
+
+    const iniciarApagarContinuo = () => {
+        if (!intervalRef.current) {
+            intervalRef.current = setInterval(apagarUm, 80);
+        }
+    };
+
+    const pararApagarContinuo = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
+
+    const limparTudo = () => {
+        setCalculo("");
+        setCursorPos(0);
+    };
+
+    const calcularResultado = () => {
+        try {
+            // TRADUÇÃO: Remove pontos de milhar e troca vírgula por ponto para o eval
+            let expressao = calculo.replace(/\./g, "").replace(/,/g, ".").replace(/×/g, "*").replace(/÷/g, "/");
+            let resultado = eval(expressao);
+
+            // VOLTA PARA O FORMATO BR: Máximo 10 decimais, ponto no milhar e vírgula no decimal
+            let [int, dec] = Number(resultado.toFixed(10)).toString().split(".");
+            let intFormatado = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+            let resultadoFinal = dec !== undefined ? `${intFormatado},${dec}` : intFormatado;
+
+            setCalculo(resultadoFinal);
+            setCursorPos(resultadoFinal.length);
+        } catch (e) {
+            Alert.alert("Erro", "Cálculo inválido");
+        }
+    };
+
+    const finalizarAnotacao = () => {
+        const dadosCompletos = { nome, numero, tipo, fontSize, foto, calculoFinal: calculo };
+
+        // Navega para a Tabela (Tela 4)
+        navigation.navigate("Tabela", { dadosCompletos });
+    };
+
+    return (
+        <View>
+
+            <View>
+                <Text style={{ fontSize }}>
+                    + ADIÇÃO: {tipo} {nome} (Nº {numero})
+                </Text>
             </View>
 
-            {/* o visor dos calculos */}
-            <View style={styles.visor}>
-                <TouchableOpacity style={styles.btnAbrirHistorico} onPress={abrirHistoricoCompleto}>
-                    <Text style={{ fontSize: 24 }}>📜</Text>
+            <View>
+                <TextInput value={calculo} caretHidden={false} onSelectionChange={(event) => setCursorPos(event.nativeEvent.selection.start)} showSoftInputOnFocus={false} />
+            </View>
+
+            <View>
+                <TouchableOpacity onPress={limparTudo}>
+                    <Text style={{ fontSize }}>C</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.historicoTextoSuperior}>{contaTexto}</Text>
+                <TouchableOpacity onPress={apagarUm} onLongPress={iniciarApagarContinuo} onPressOut={pararApagarContinuo}>
+                    <Text style={{ fontSize }}>⌫</Text>
+                </TouchableOpacity>
 
-                <TextInput
-                    style={[styles.visorText, { fontSize: fontSize * 1.5 }]}
-                    value={formatarMilhar(valorAtual)}
-                    showSoftInputOnFocus={false}
-                    textAlign="right"
-                    onChangeText={(t) => setValorAtual(t.replace(/\./g, "").replace(",", "."))}
-                />
-            </View>
-
-            {/* etcaldos masi e menos  */}
-            <View style={styles.teclado}>
-                <View style={styles.numerosGrid}>
-                    {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, "."].map((n) => (
-                        <TouchableOpacity
-                            key={n}
-                            style={[styles.btn, { width: n === 0 ? "64%" : "30%" }]}
-                            onPress={() => digitarNumero(n)}
-                        >
-                            <Text style={[styles.btnTxt, { fontSize: fontSize }]}>{n === "." ? "," : n}</Text>
+                <View>
+                    {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, ","].map((n) => (
+                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} >
+                            <Text style={{ fontSize }}>{n}</Text>
                         </TouchableOpacity>
                     ))}
-
-                    <TouchableOpacity style={[styles.btn, styles.btnC, { width: "30%" }]} onPress={limpar}>
-                        <Text style={[styles.btnTxt, { fontSize: fontSize }]}>C</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.btn, styles.btnApagar, { width: "64%" }]} onPress={apagarUm}>
-                        <Text style={[styles.btnTxt, { fontSize: fontSize }]}>⌫</Text>
-                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.operacoesGrid}>
+                <View>
                     {["÷", "×", "-", "+"].map((op) => (
-                        <TouchableOpacity
-                            key={op}
-                            style={[styles.btnOp, op === "+" && { backgroundColor: "#FF9800" }]}
-                            onPress={() => selecionarOperacao(op)}
-                        >
-                            <Text style={styles.btnTxtOp}>{op}</Text>
+                        <TouchableOpacity key={op} onPress={() => inserirCaractere(op)}>
+                            <Text style={{ fontSize }}>{op}</Text>
                         </TouchableOpacity>
                     ))}
-                    <TouchableOpacity style={styles.btnIgual} onPress={calcular}>
-                        <Text style={styles.btnTxtOp}>=</Text>
+
+                    <TouchableOpacity onPress={calcularResultado}>
+                        <Text style={{ fontSize }}>=</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* confrimar tem que deixar no final depois  */}
             <TouchableOpacity style={styles.btnFinalizar} onPress={finalizarAnotacao}>
-                <Text style={[styles.finalizarTxt, { fontSize: fontSize }]}>
-                    {isEditing ? "CONFIRMAR EDIÇÃO ✅" : "FINALIZAR ✅"}
+                <Text style={{ fontSize }}>
+                    {/* fazer depois ser tiver ediçaõ {Editidano ? "CONFIRMAR EDIÇÃO ✅" : "FINALIZAR ✅"} */}
+                    FINALIZAR ✅
                 </Text>
             </TouchableOpacity>
-
-
-
-            {/*coreção no historico   */}
-
-            {/* MODAL DO HISTORICO AQUI  */}
-            <Modal visible={modalHistorico} animationType="slide" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalConteudo}>
-                        <Text style={styles.modalTitulo}>Histórico de {nome}</Text>
-                        <FlatList
-                            data={[...historicoSessao, ...historicoProduto.map(p => p.contaFeita)]}
-                            keyExtractor={(item, index) => index.toString()}
-                            renderItem={({ item }) => {
-                                if (!item) return null
-                                return (
-                                    <TouchableOpacity
-                                        style={styles.itemHistorico}
-                                        onPress={() => {
-                                            const partes = String(item).split("=")
-                                            if (partes[1]) {
-                                                setValorAtual(partes[1].trim().replace(",", "."))
-                                                setModalHistorico(false)
-                                            }
-                                        }}
-                                    >
-                                        <Text style={styles.txtItemConta}>{String(item).replace(/\|/g, "\n")}</Text>
-                                        <Text style={styles.txtDica}>📥 Tocar para carregar</Text>
-                                    </TouchableOpacity>
-                                )
-                            }}
-                            ListEmptyComponent={<Text style={{ textAlign: "center", color: "#999" }}>Sem histórico</Text>}
-                        />
-                        <TouchableOpacity style={styles.btnFechar} onPress={() => setModalHistorico(false)}>
-                            <Text style={{ color: "white", fontWeight: "bold" }}>FECHAR</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-
-
-
-
 
 
         </View>
     )
 }
 
-// fazer desing da calculadora samung
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#3c3c3c",
-        padding: 10,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)', // Fundo escurecido
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalConteudo: {
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 20,
-        elevation: 10,
-    },
-    modalTitulo: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 15,
-        textAlign: 'center',
-    },
-    itemHistoricoDetalhado: {
-        backgroundColor: '#f8f9fa',
-        padding: 12,
-        borderRadius: 10,
-        marginBottom: 10,
-        borderLeftWidth: 4,
-        borderLeftColor: '#2196F3', // Cor azul para destacar
-    },
-    dataHistorico: {
-        fontSize: 12,
-        color: '#999',
-    },
-    contaHistorico: {
-        fontSize: 16,
-        color: '#444',
-        marginVertical: 4,
-        fontFamily: 'monospace', // Dá cara de calculadora
-    },
-    resultadoHistorico: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#4CAF50',
-    },
-    btnFecharModal: {
-        backgroundColor: '#2196F3',
-        padding: 15,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 15,
-    },
-    header: {
-        padding: 5,
-        alignItems: "center"
-    },
-    headerTxt: {
-        color: "#4CAF50",
-        fontWeight: "bold"
-    },
-    visor: {
-        backgroundColor: "white",
-        marginVertical: 15,
-        padding: 15,
-        borderRadius: 15,
-        alignItems: "flex-end",
-        minHeight: 100,
-        elevation: 5
-    },
-    historico: {
-        color: "#888",
-        fontSize: 20
-    },
-    visorText: {
-        fontWeight: "bold",
-        color: "black"
-    },
-    teclado: {
-        flexDirection: "row",
-        justifyContent: "space-between"
-    },
-    numerosGrid: {
-        width: "72%",
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 10
-    },
-    operacoesGrid: {
-        width: "25%",
-        gap: 10
-    },
-    btn: {
-        backgroundColor: "#555",
-        height: 75,
-        borderRadius: 15,
-        justifyContent: "center",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#777"
-    },
-    btnOp: {
-        backgroundColor: "#607D8B",
-        height: 68,
-        borderRadius: 15,
-        justifyContent: "center",
-        alignItems: "center"
-    },
-    btnIgual: {
-        backgroundColor: "#4CAF50",
-        height: 100,
-        borderRadius: 15,
-        justifyContent: "center",
-        alignItems: "center"
-    },
-    btnC: {
-        backgroundColor: "#F44336"
-    },
-    btnTxt: {
-        color: "white",
-        fontWeight: "bold"
-    },
-    btnTxtOp: {
-        color: "white",
-        fontWeight: "bold",
-        fontSize: 35
-    },
-    btnFinalizar: {
-        backgroundColor: "#2196F3",
-        padding: 20,
-        borderRadius: 20,
-        alignItems: "center",
-        marginTop: "auto",
-        marginBottom: 10
-    },
-    finalizarTxt: {
-        color: "white",
-        fontWeight: "bold"
-    }
+    // fazer depois
 });

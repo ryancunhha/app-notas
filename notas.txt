@@ -1,0 +1,65 @@
+
+
+{/* notificação em 1 semana */ }
+{/* fazer que o usuario consiga sair do aplicativo e salva de onde parou, tipo saiu, fecho ou app ele volta do ponto exato de onde parou */ }
+
+Fazer um aplicativo de anotações mobile
+
+ | Abrir a tela ter a página inicial vai ter: Anotar, ver as anotações, vai ter opção de expandir a letras para maior visualização aplicará para todas as tela seguintes
+
+ | tela com predefinições (perda, entrada, produção, personalizado) no input e será escrita no input, Numero, Nome, tira foto e avançar, 
+
+ | vai para a calculadora completa baseada na calculadora da Samsung, vai ter: +,-,*,/,=,1,2,3,4,5,6,7,8,9,0, virgula, botão de apagar 1 numero, botão de apagar tudo, visualização no topo do que estar sendo adicionando tipo, Produção: nome do produto N: 1, e ter um historico de calculos tipo igual do sasmung de como foi feito para chegar no resultado atual, tipo resultado foi 5 ai tem como ver foi feito 1+1 =2 ai 2+2=4 ai 4+1 = 5 e poder voltar no passado no resulatdo, depois de fazer o calculos salvar o resultado 
+
+ | Vai ter uma tabela, com filtros da predefenições, Todos, Entrada, Produção ou personalizado com respectivas cores, ai tem opçao de editar tudo: nome do produto, numero do produto, tipo de predefição, adicação e foto, troca de foto (se já tiver), data da adição na tabela, resultado rapido ou completo que voltará para a calculadora, exportar relatorio pro whastapp ou outro app, apagar tudo ou zerá tablea com comfirmação e tempo de 5segudno e botaõ de voltar, ordem por numero N1 primerio, N2 segundo ai ser tiver preenchido primeiro N2 será o primeiro ai N3 será o segundo ai ser preencher o N1 ele vai direto pro topo e
+
+Recurso
+ | Pode o usuario sair do aplicativo que vai ficar salvo automaticamente e de onde ela parou mesmo que feche o app,
+ | Verificação ser não existe o mesmo numero já na tabela, nome já na tabela, não pode ter ALFACE e na tabela ter alface ou Alface e na tabela alface
+ | Notificação de 1 semana
+
+
+
+
+ | Tirar foto ser quiser vai aparecer uma opção na 2 tela onde aparecerá (nome e numero do produto),
+ | pode personalizar o tipo e vai ter predefinição,
+ | botão de ver a tabela inteira e ter um filtro todo | perda | produçaõ | entradas | outros...,
+ | poder corrigir os dados da tabela clicando em cima,
+ | pode ser convertido em .txt ou copiar e colar no whasapp,
+ | limpar tabela (tela de confirmação "tem certeza?"),
+ | criar um nova tabela zerada,
+ | ver historico da calculadora do produto
+ | fazer correções fazer 2 nomes diferentes como ALFACE -> alface
+ | numero repetidos tbm
+
+
+
+         Todos | perda , produção, entradas
+
+                    TIPO PERDA
+
+foto da etiqueta | Numero do produto | nome produto | resultado  
+  X                     1        X      arroz   X       0,500g  X
+  X                     2        X      alface  X       1kg  X 
+
+                    TIPO Entrada
+
+foto da etiqueta | Numero do produto | nome produto | resultado  
+  X                     1        X      arroz   X       0,30g  X
+  X                     2        X      alface  X       1,3kg  X
+
+                    TIPO produçaõ
+
+foto da etiqueta | Numero do produto | nome produto | resultado  
+  X                     1        X      arroz   X       1kg  X
+  X                     2        X      alface  X       1kg  X
+
+
+outrasa funções:
+ | Ela vai pegar esses resultados salvos e publicar no sistema do mercado
+
+
+
+
+
+            {/* Fazer uma correção de quando for para tabela final for maiscula, tipo alface vira ALFACE ai ser já existir um ALFACE da um aviso que ja existe na tabela ALFACE, e para numero tabem tipo numero 1 ai coloca novamente 1 da aviso já existe que editar o valor existente? */}
