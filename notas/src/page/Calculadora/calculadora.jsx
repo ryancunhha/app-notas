@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Calculadora({ route, navigation }) {
     // Puxar NOME, NUMERO, TIPO, FONTE, FOTO
@@ -31,9 +32,10 @@ export default function Calculadora({ route, navigation }) {
     const [calculo, setCalculo] = useState("");
     const [cursorPos, setCursorPos] = useState(0); // Para saber onde o usuário clicou
 
-    const calculoRef = useRef(calculo);
-    const cursorPosRef = useRef(cursorPos);
+    const calculoRef = useRef("");
+    const cursorPosRef = useRef(0);
     const intervalRef = useRef(null); // Para o botão de apagar segurado
+    const inputRef = useRef(null); // E o input naõ ta aparecedo a | barra de digitar
 
     // Mantém as referências atualizadas sempre que o estado mudar
     useEffect(() => {
@@ -41,7 +43,14 @@ export default function Calculadora({ route, navigation }) {
         cursorPosRef.current = cursorPos;
     }, [calculo, cursorPos]);
 
-    // Funções da Calculadora
+    // Fazer o cursor piscar ao entrar
+    useEffect(() => {
+        setTimeout(() => {
+            if (inputRef.current) inputRef.current.focus();
+        }, 500);
+    }, []);
+
+    // Funções da Calculadora - OK
     const inserirCaractere = (char) => {
         const operadoresPermitidos = ["+", "-", "×", "÷"];
         const ehOperador = operadoresPermitidos.includes(char);
@@ -49,6 +58,16 @@ export default function Calculadora({ route, navigation }) {
 
         let textoAtual = calculoRef.current;
         const posAtual = cursorPosRef.current;
+
+        // --- LÓGICA DE TROCA DE OPERADOR (O "não deixar separado") ---
+        const ultimoChar = textoAtual.slice(posAtual - 1, posAtual);
+        if (operadoresPermitidos.includes(ultimoChar) && ehOperador) {
+            // Se o usuário clicar num operador e já existir um ali, ele substitui
+            const novoTexto = textoAtual.slice(0, posAtual - 1) + char + textoAtual.slice(posAtual);
+            setCalculo(novoTexto);
+            // Mantém a posição do cursor após a troca
+            return;
+        }
 
         // 1. Identificar o bloco do número atual
         const parteAntes = textoAtual.slice(0, posAtual);
@@ -81,7 +100,6 @@ export default function Calculadora({ route, navigation }) {
         }
 
         // --- VALIDAÇÕES DE SEGURANÇA ---
-        const ultimoChar = textoAtual.slice(posAtual - 1, posAtual);
         if (["+", "-", "×", "÷", ","].includes(ultimoChar) && (ehOperador || ehVirgula)) return;
         if (textoAtual.length === 0 && ["+", "×", "÷", ","].includes(char)) return;
 
@@ -162,11 +180,38 @@ export default function Calculadora({ route, navigation }) {
         }
     };
 
-    const finalizarAnotacao = () => {
-        const dadosCompletos = { nome, numero, tipo, fontSize, foto, calculoFinal: calculo };
+    const finalizarAnotacao = async () => {
+        const temOperador = /[+\-×÷]/.test(calculo);
 
-        // Navega para a Tabela (Tela 4)
-        navigation.navigate("Tabela", { dadosCompletos });
+        if (temOperador) {
+            // Deixar temporario
+            Alert.alert(
+                "Atenção",
+                "Resolva o cálculo clicando no botão '=' antes de finalizar!"
+            );
+            return;
+        }
+
+        const novaAnotacao = { fontSize, nome, numero, tipo, foto, calculoFinal: calculo };
+
+        try {
+            // 2. Busca o que já estava salvo antes
+            const dadosAntigos = await AsyncStorage.getItem("@minha_tabela_dados");
+            const listaAtualizada = dadosAntigos ? JSON.parse(dadosAntigos) : [];
+
+            // 3. Adiciona a nova anotação na lista
+            listaAtualizada.push(novaAnotacao);
+
+            // 4. Salva a lista atualizada de volta no celular
+            await AsyncStorage.setItem("@minha_tabela_dados", JSON.stringify(listaAtualizada));
+
+            // 5. Vai para a tabela (sem precisar passar os dados brutos, 
+            // pois ela vai ler do banco sozinha)
+            navigation.navigate("Tabela");
+        } catch (e) {
+            Alert.alert("Erro", "Não foi possível salvar os dados");
+            console.log(e);
+        }
     };
 
     return (
@@ -179,7 +224,8 @@ export default function Calculadora({ route, navigation }) {
             </View>
 
             <View>
-                <TextInput value={calculo} caretHidden={false} onSelectionChange={(event) => setCursorPos(event.nativeEvent.selection.start)} showSoftInputOnFocus={false} />
+                {/* foi com o ref */}
+                <TextInput ref={inputRef} value={calculo} caretHidden={false} onSelectionChange={(event) => setCursorPos(event.nativeEvent.selection.start)} showSoftInputOnFocus={false} />
             </View>
 
             <View>
@@ -200,6 +246,7 @@ export default function Calculadora({ route, navigation }) {
                 </View>
 
                 <View>
+                    {/* esqueci um detalizinho que eu não deixo e a troca tipo estar "+" ai para não clica em apagar e depois em "-"  clica direto em e - já coloca  */}
                     {["÷", "×", "-", "+"].map((op) => (
                         <TouchableOpacity key={op} onPress={() => inserirCaractere(op)}>
                             <Text style={{ fontSize }}>{op}</Text>

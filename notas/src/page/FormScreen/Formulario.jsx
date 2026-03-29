@@ -1,15 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Modal, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /*
-ERROS
+OK AGORA Fomulario
 */
 
 export default function FormScreen({ route, navigation }) {
-    // PUXAR A FONTE SELECIONADA NA TELA INICIAL - OK
-    // Não pode repitir na tebale exemplo se o usuario colocar FELIPE ou felipe e não pode salva que já exsite, tbm para numero
-    // Conseguir tirar foto com visualização da foto - OK
+    // DEPois de tira foto ver uma preview
 
     // FONTE
     const { fontSize } = route.params;
@@ -18,6 +17,8 @@ export default function FormScreen({ route, navigation }) {
     const [nome, setNome] = useState("");
     const [numero, setNumero] = useState("");
     const [tipo, setTipo] = useState("");
+    const [tipoPersonalizado, setTipoPersonalizado] = useState(""); // Novo estado
+    const [registrosExistentes, setRegistrosExistentes] = useState([]);
 
     // foto Permissões e Ref
     const [foto, setFoto] = useState(null);
@@ -25,13 +26,16 @@ export default function FormScreen({ route, navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef(null);
 
-    // Lista fictícia excluir depois
-    const registrosExistentes = [
-        { nome: "FELIPE", numero: "10" },
-        { nome: "MARIA", numero: "20" }
-    ];
-
     const tipos = ["Entrada", "Saída", "Produção", "Personalizado"];
+
+    // BUSCAR DADOS PARA VALIDAR DUPLICADOS
+    useEffect(() => {
+        const carregarParaValidar = async () => {
+            const dados = await AsyncStorage.getItem("@minha_tabela_dados");
+            if (dados) setRegistrosExistentes(JSON.parse(dados));
+        };
+        carregarParaValidar();
+    }, []);
 
     const tirarFoto = async () => {
         if (cameraRef.current) {
@@ -43,23 +47,24 @@ export default function FormScreen({ route, navigation }) {
     };
 
     const validarEAvancar = () => {
-        // Validação de Duplicados
-        // const jaExisteNome = registrosExistentes.some(r => r.nome.toUpperCase() === nome.toUpperCase());
-        // const jaExisteNumero = registrosExistentes.some(r => r.numero === numero);
+        let tipoFinal = tipo === "Personalizado" ? tipoPersonalizado : tipo;
+        if (!tipoFinal) tipoFinal = "Todos";
 
-        // fazer depois
-        // if (!nome || !numero || !tipo) {
-        //     Alert.alert("Erro", "Preencha todos os campos!");
-        //     return;
-        // }
-        // 
-        // if (jaExisteNome || jaExisteNumero) {
-        //     Alert.alert("Atenção", "Este Nome ou Número já está cadastrado na tabela!");
-        //     return;
-        // }
+        const jaExisteNome = registrosExistentes.some(r => r.nome.toLowerCase() === nome.toLowerCase());
+        const jaExisteNumero = registrosExistentes.some(r => r.numero === numero);
 
-        // Não fiz ainda deixar em branco
-        navigation.navigate("Calculadora", { nome, numero, tipo, foto, fontSize });
+        if (jaExisteNome) {
+            // DEIXAR TEMPORARIO
+            Alert.alert("Atenção", "Este NOME já está cadastrado!");
+            return;
+        }
+        if (jaExisteNumero) {
+            // DEIXAR TEMPORARIO
+            Alert.alert("Atenção", "Este NÚMERO já está cadastrado!");
+            return;
+        }
+
+        navigation.navigate("Calculadora", { nome, numero, tipo: tipoFinal, foto, fontSize });
     };
 
     return (
@@ -79,6 +84,10 @@ export default function FormScreen({ route, navigation }) {
                         </Text>
                     </TouchableOpacity>
                 ))}
+
+                {tipo === "Personalizado" && (
+                    <TextInput placeholder="Qual o tipo personalizado?" value={tipoPersonalizado} onChangeText={setTipoPersonalizado} />
+                )}
             </View>
 
             {/* SEÇÃO DA FOTO */}
@@ -115,7 +124,7 @@ export default function FormScreen({ route, navigation }) {
                 <Text style={{ fontSize }}>PRÓXIMO</Text>
             </TouchableOpacity>
 
-            {/* MODAL DA CÂMERA */}
+            {/* MODAL DA CÂMERA - fazer depois */}
             <Modal visible={cameraVisivel} animationType="slide">
                 <CameraView ref={cameraRef}>
                     <View>
