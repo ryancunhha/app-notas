@@ -61,7 +61,7 @@ Caso encontre problemas de conexão, tente usar o modo tunnel:
 
 Aqui está o progresso do desenvolvimento do aplicativo:
 
-### Concluído (Já feito)
+### ✅ Concluído (Já feito)
 - [x] Criar a estrutura inicial do projeto em React Native.
 - [x] Desenvolver a tela principal do aplicativo.
 - [x] Implementar a funcionalidade de salvar o nome do produto.
