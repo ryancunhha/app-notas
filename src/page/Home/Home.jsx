@@ -13,6 +13,7 @@ export default function HomeScreen({ navigation }) {
     const [versaoMenu, setVersaoMenu] = useState("postIt");
     const [posicaoMenu, setPosicaoMenu] = useState(null);
     const [produtoFocado, setProdutoFocado] = useState(null);
+    const [idMenuAberto, setIdMenuAberto] = useState(null);
 
     // Carrega os dados do AsyncStorage
     useEffect(() => {
@@ -50,7 +51,7 @@ export default function HomeScreen({ navigation }) {
         return atendeFiltro && atendePesquisa;
     });
 
-    // Ações Menu
+    // Ações Postit
     const abrirMenu = (event, versao, produto = null) => {
         const { pageX, pageY } = event.nativeEvent;
 
@@ -76,8 +77,7 @@ export default function HomeScreen({ navigation }) {
                 [
                     { text: "Não", style: "cancel" },
                     {
-                        text: "Excluir",
-                        style: "destructive",
+                        text: "Sim, Excluir",
                         onPress: async () => {
                             const novaLista = produtos.filter(p => p.numeroProduto !== produtoFocado.numeroProduto);
 
@@ -103,7 +103,6 @@ export default function HomeScreen({ navigation }) {
                     { text: "Não", style: "cancel" },
                     {
                         text: "Sim, Excluir",
-                        style: "destructive",
                         onPress: async () => {
                             let novaLista = [];
                             if (filtroAtual !== "TUDO") {
@@ -129,18 +128,16 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
-            let mensagemTexto = `📋 *RELATÓRIO DE PRODUTOS - ABA: ${filtroAtual.toUpperCase()}*\n`;
-            mensagemTexto += `----------------------------------------\n\n`;
+            let mensagemTexto = `📋 *RELATÓRIO - ${filtroAtual.toUpperCase()}*\n\n`;
 
             produtosFiltrados.forEach((item, index) => {
-                mensagemTexto += `${index + 1}. *${item.nome}*\n`;
+                mensagemTexto += `${index + 1}.   ---------------\n`;
+                mensagemTexto += `   📦 Produto: *${item.nome}*\n`;
                 mensagemTexto += `   🔢 Nº: ${item.numeroProduto}\n`;
                 mensagemTexto += `   🏷️ Tipo: ${item.tipo}\n`;
                 mensagemTexto += `   💰 Valor: R$ ${item.valor}\n`;
-                mensagemTexto += `   🕒 Data: ${item.dataHora}\n\n`;
+                mensagemTexto += `   📅 Data: ${item.dataHora}\n\n`;
             });
-
-            mensagemTexto += `----------------------------------------\n`;
 
             try {
                 await Share.share({
@@ -160,7 +157,7 @@ export default function HomeScreen({ navigation }) {
         },
     };
 
-    // Ações post-it
+    // Seleções do postits
     const alternarSelecaoMultipla = (numeroProduto) => {
         if (itensSelecionados.includes(numeroProduto)) {
             setItensSelecionados(itensSelecionados.filter(id => id !== numeroProduto));
@@ -174,12 +171,11 @@ export default function HomeScreen({ navigation }) {
 
         Alert.alert(
             "Excluir Selecionados",
-            `Deseja mesmo excluir os ${itensSelecionados.length} produtos selecionados?`,
+            `Deseja excluir os produtos selecionados?`,
             [
                 { text: "Não", style: "cancel" },
                 {
-                    text: "Excluir Todos",
-                    style: "destructive",
+                    text: "Sim, Excluir",
                     onPress: async () => {
                         const novaLista = produtos.filter(p => !itensSelecionados.includes(p.numeroProduto));
 
@@ -202,80 +198,167 @@ export default function HomeScreen({ navigation }) {
 
     const RenderizarPostIt = ({ item }) => {
         const estaSelecionado = itensSelecionados.includes(item.numeroProduto);
+        const menuExpandido = idMenuAberto === item.numeroProduto;
+        const alternarGaveta = () => {
+            setIdMenuAberto(menuExpandido ? null : item.numeroProduto);
+            setProdutoFocado(item);
+        };
+
+        const corDaFaixa = item.tipo === "Entrada" ? "#4CAF50" : item.tipo === "Perda" ? "#F44336" : "#2196F3";
+        const corTransparnte = corDaFaixa + "1A";
 
         return (
-            <TouchableOpacity onPress={() => itensSelecionados.length > 0 ? alternarSelecaoMultipla(item.numeroProduto) : null} onLongPress={() => alternarSelecaoMultipla(item.numeroProduto)} activeOpacity={0.8} >
-                <Text>
-                    {/* TESTE DE MULTIPLA SELEÇÂO */}
-                    {estaSelecionado ? "# " : ""}
-                </Text>
+            <TouchableOpacity style={[styles.cardPostIt, { backgroundColor: corTransparnte }]}
+                onPress={() => itensSelecionados.length > 0 ? alternarSelecaoMultipla(item.numeroProduto) : alternarGaveta()}
+                onLongPress={() => alternarSelecaoMultipla(item.numeroProduto)} activeOpacity={0.8} >
+                <View style={{ height: 8, backgroundColor: corDaFaixa, width: "100%" }} />
 
-                <View>
-                    <Text numberOfLines={1}>{item.nome}</Text>
-                    <Text>{item.numeroProduto}</Text>
-                    <Text>R$ {item.valor}</Text>
+                <View style={{ position: "absolute", top: 16, right: 10, zIndex: 5 }}>
+                    {itensSelecionados.length > 0 && (
+                        <View style={[
+                            styles.bolinhaSelecao,
+                            estaSelecionado ? styles.bolinhaAtiva : styles.bolinhaInativa
+                        ]}>
+                            {estaSelecionado && <View style={styles.pontoInterno} />}
+                        </View>
+                    )}
                 </View>
 
-                <View>
-                    <Text>{item.dataHora}</Text>
-                    <TouchableOpacity onPress={(e) => abrirMenu(e, "postIt", item)}>
-                        <Text>...</Text>
-                    </TouchableOpacity>
+                <View style={{ padding: 8 }}>
+                    <View style={{ paddingBottom: 15, gap: 3 }}>
+                        <Text style={{ fontWeight: "bold", fontSize: 17 }} numberOfLines={1}>{item.nome}</Text>
+                        <Text style={{ fontSize: 16 }}>{item.numeroProduto}</Text>
+                        <Text style={{ fontSize: 17 }}>R$ {item.valor}</Text>
+                    </View>
+
+                    <View style={{ marginTop: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center", }}>
+                        <View>
+                            <Text style={{ fontSize: 12 }}>🕒 {item.dataHora}</Text>
+                        </View>
+
+                        <Text style={{ paddingHorizontal: 8, fontWeight: "600", fontSize: 15, }}>⋮</Text>
+                    </View>
                 </View>
+
+                {menuExpandido && (
+                    <View style={{ marginVertical: 3, paddingHorizontal: 5, justifyContent: "center", alignItems: "center", gap: 3, }}>
+                        <TouchableOpacity style={styles.gaveta} onPress={() => { acoesMenu.aoEditar(); setIdMenuAberto(null); }}>
+                            <Text style={{ fontWeight: "bold", color: "#333" }}>Editar</Text>
+                        </TouchableOpacity>
+
+                        {false && (
+                            <TouchableOpacity style={styles.gaveta} onPress={() => { acoesMenu.aoVerImagem(); setIdMenuAberto(null); }}>
+                                <Text style={{ fontWeight: "bold", color: "#333" }}>Ver Imagem</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity style={styles.gaveta} onPress={() => { acoesMenu.aoExcluir(); setIdMenuAberto(null); }}>
+                            <Text style={{ fontWeight: "bold", color: "#333" }}>Excluir</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </TouchableOpacity>
         );
     };
 
     return (
-        <View>
-            <View>
-                <Text>Bloco De Notas</Text>
-                <TextInput onChangeText={setPesquisa} value={pesquisa} placeholder="Pesquisar por nome, número ou valor..." placeholderTextColor="#999" />
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={{ fontSize: 20, fontWeight: "bold" }}>Notas</Text>
+
+                <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 0.7, borderRadius: 100, borderColor: "#999" }}>
+                    <TextInput style={{ width: 130, height: 30, paddingLeft: 10, paddingBottom: 0, paddingTop: 0, fontSize: 12.5, }} onChangeText={setPesquisa} value={pesquisa} placeholder="Pesquisar..." placeholderTextColor="#999" />
+                    <Text style={{ paddingHorizontal: 6, paddingVertical: 4 }}>🔍</Text>
+                </View>
             </View>
 
             <View>
                 {/* Filtro */}
-                <View>
-                    <View>
-                        <FlatList data={tiposDeFiltro} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item} renderItem={({ item }) => (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setFiltroAtual(item);
-                                    setItensSelecionados([]);
-                                }}
-                            >
-                                <Text>
-                                    {item}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 15, alignItems: "center", paddingRight: 10, }}>
+                    <View style={{ width: "90%", gap: 5 }}>
+                        <FlatList data={tiposDeFiltro} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(item) => item} renderItem={({ item }) => {
+                            let corPadrao = "#007BFF";
+                            if (item === "Perda") corPadrao = "#F44336";
+                            if (item === "Entrada") corPadrao = "#4CAF50";
+
+                            const selecionado = filtroAtual === item;
+                            const corTransparente = corPadrao + "33";
+
+                            return (
+                                <TouchableOpacity
+                                    style={{
+                                        marginRight: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 50,
+                                        backgroundColor: selecionado ? corPadrao : corTransparente,
+                                    }}
+                                    onPress={() => {
+                                        setFiltroAtual(item);
+                                        setItensSelecionados([]);
+                                    }}
+                                >
+                                    <Text style={{ color: selecionado ? "#FFF" : "#000", }}>
+                                        {item}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        }}
                         />
                     </View>
 
                     <TouchableOpacity onPress={(e) => abrirMenu(e, "filtro")}>
-                        <Text>...</Text>
+                        <Text style={{ fontSize: 25, fontWeight: "600" }}>⋮</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* POST-ITS */}
                 <View>
-                    <FlatList data={produtosFiltrados} renderItem={RenderizarPostIt} keyExtractor={(item) => item.numeroProduto} numColumns={2} showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={
-                            <Text>Nenhum registro.</Text>
-                        }
+                    <FlatList
+                        data={[1]}
+                        renderItem={() => (
+                            <View>
+                                {produtosFiltrados.length === 0 ? (
+                                    <View style={{ marginTop: 100, alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ color: "#999", fontSize: 16 }}>Nenhum registro encontrado.</Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                        {/* COLUNA ESQUERDA */}
+                                        <View style={{ flex: 1, marginRight: 4 }}>
+                                            {produtosFiltrados
+                                                .filter((_, i) => i % 2 === 0)
+                                                .map((item) => (
+                                                    <RenderizarPostIt key={item.numeroProduto} item={item} />
+                                                ))}
+                                        </View>
+
+                                        {/* COLUNA DIREITA */}
+                                        <View style={{ flex: 1, marginLeft: 4 }}>
+                                            {produtosFiltrados
+                                                .filter((_, i) => i % 2 !== 0)
+                                                .map((item) => (
+                                                    <RenderizarPostIt key={item.numeroProduto} item={item} />
+                                                ))}
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+                        keyExtractor={() => "mural-root"}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 160 }}
                     />
                 </View>
             </View>
 
-            <View>
+            {/* Navegação */}
+            <View style={styles.fabContainer}>
                 {itensSelecionados.length > 0 && (
-                    <TouchableOpacity onPress={deletarSelecionadosEmMassa}>
+                    <TouchableOpacity style={[styles.btnNav, { marginBottom: 10, backgroundColor: "#e30000" }]} onPress={deletarSelecionadosEmMassa}>
                         <Text>🗑️</Text>
                     </TouchableOpacity>
                 )}
 
-                <TouchableOpacity onPress={irParaCadastroFormulario}>
-                    <Text>+</Text>
+                <TouchableOpacity style={[styles.btnNav, { backgroundColor: "#2d73e4" }]} onPress={irParaCadastroFormulario}>
+                    <Text style={{ fontWeight: "900", color: "#fff" }}>+</Text>
                 </TouchableOpacity>
             </View>
 
@@ -284,4 +367,81 @@ export default function HomeScreen({ navigation }) {
     )
 }
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+    // Geral
+    container: {
+        flex: 1,
+        marginTop: 40,
+        marginBottom: 50,
+        paddingHorizontal: 10,
+    },
+
+    // Header
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+
+    // Filtro
+
+    // Post-its
+    cardPostIt: {
+        width: "100%",
+        borderRadius: 8,
+        marginBottom: 15,
+        overflow: "hidden",
+        alignSelf: "flex-start",
+    },
+
+    // Opções
+    gaveta: {
+        width: "100%",
+        backgroundColor: "rgba(255,255,255,0.5)",
+        paddingVertical: 10,
+        borderRadius: 6,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,0.03)",
+    },
+
+    // Selecão
+    bolinhaSelecao: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        borderWidth: 2,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    bolinhaInativa: {
+        borderColor: "#94A3B8",
+        backgroundColor: "transparent",
+    },
+    bolinhaAtiva: {
+        borderColor: "#007BFF",
+        backgroundColor: "#007BFF",
+    },
+    pontoInterno: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#fff",
+    },
+
+    // Navegação
+    fabContainer: {
+        position: "absolute",
+        bottom: 20,
+        right: 30,
+        zIndex: 5,
+    },
+    btnNav: {
+        width: 60,
+        height: 60,
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 50,
+    }
+})

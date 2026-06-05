@@ -10,11 +10,13 @@ export default function FormScreen({ route, navigation }) {
 
     // ESTADOS DO FORMULÁRIO
     const [nome, setNome] = useState(produtoParaEditar ? produtoParaEditar.nome : "");
+    const salvamentoConcluido = useRef(false);
     const [numeroProduto, setNumeroProduto] = useState(produtoParaEditar ? produtoParaEditar.numeroProduto : "");
     const [tipo, setTipo] = useState(produtoParaEditar ? (["Entrada", "Perda"].includes(produtoParaEditar.tipo) ? produtoParaEditar.tipo : "Personalizado") : "Entrada");
     const [tipoPersonalizado, setTipoPersonalizado] = useState(produtoParaEditar && !["Entrada", "Perda"].includes(produtoParaEditar.tipo) ? produtoParaEditar.tipo : "");
     const [valor, setValor] = useState(produtoParaEditar ? produtoParaEditar.valor : "");
     const [imagem, setImagem] = useState(produtoParaEditar ? produtoParaEditar.imagem : null);
+    const [categoriasExistentes, setCategoriasExistentes] = useState([]);
 
     // ESTADOS DA CÂMERA
     const [permissao, pedirPermissao] = useCameraPermissions();
@@ -28,6 +30,7 @@ export default function FormScreen({ route, navigation }) {
     const tipoAlterado = produtoParaEditar && tipoFinalAtual !== produtoParaEditar.tipo;
     const valorAlterado = produtoParaEditar && valor.trim() !== produtoParaEditar.valor;
     const imagemAlterada = produtoParaEditar && imagem !== produtoParaEditar.imagem;
+    const temAlteracao = produtoParaEditar ? (nomeAlterado || numeroAlterado || tipoAlterado || valorAlterado || imagemAlterada) : (nome.trim() !== "" || numeroProduto.trim() !== "" || valor.trim() !== "" || tipo !== "Entrada" || tipoPersonalizado.trim() !== "" || imagem !== null);
 
     // Camera
     const abrirCamera = async () => {
@@ -57,12 +60,12 @@ export default function FormScreen({ route, navigation }) {
     const salvarAnotacao = async () => {
         // 1. Validações
         if (!nome.trim() || !numeroProduto.trim() || !valor.trim()) {
-            Alert.alert("Erro", "Preencha todos os campos obrigatórios.");
+            Alert.alert("Erro", "Preencha todos os campos obrigatórios: NOME, NUMERO e VALOR.");
             return;
         }
 
         if (isNaN(numeroProduto)) {
-            Alert.alert("Erro", "O número do produto deve conter apenas algarismos numéricos.");
+            Alert.alert("Erro", "O número do produto deve conter apenas números.");
             return;
         }
 
@@ -108,7 +111,7 @@ export default function FormScreen({ route, navigation }) {
             const minutos = String(agora.getMinutes()).padStart(2, '0');
             const dataHoraAutomatica = `${dia}-${mes} ${horas}:${minutos}`;
 
-            // Montagem do objeto (Salvo no Storage) ------------
+            // Montagem do objeto (Salvo no Storage)
             const produtoPronto = {
                 nome: nome.trim(),
                 numeroProduto: numeroProduto.trim(),
@@ -127,54 +130,149 @@ export default function FormScreen({ route, navigation }) {
 
             // Salva no AsyncStorage e volta para a tela anterior
             await AsyncStorage.setItem("@meus_produtos", JSON.stringify(novaLista));
-            Alert.alert("Sucesso", produtoParaEditar ? "Alterações salvas!" : "Produto cadastrado com sucesso!");
-
-            if (navigation) navigation.goBack();
+            salvamentoConcluido.current = true;
+            Alert.alert("Sucesso", produtoParaEditar ? "Alterações salvas!" : "Produto cadastrado com sucesso!",
+                [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            if (navigation) navigation.goBack();
+                        }
+                    }
+                ]
+            );
         } catch (error) {
             Alert.alert("Erro", "Não foi possível salvar os dados.");
         }
     };
 
+    useEffect(() => {
+        const carregarCategorias = async () => {
+            try {
+                const dadosSalvos = await AsyncStorage.getItem("@meus_produtos");
+
+                if (dadosSalvos !== null) {
+                    const listaProdutos = JSON.parse(dadosSalvos);
+                    const filtradas = [...new Set(
+                        listaProdutos.map(p => p.tipo).filter(t => t !== "Entrada" && t !== "Perda" && t)
+                    )];
+
+                    setCategoriasExistentes(filtradas);
+                }
+            } catch (e) {
+                console.log("Erro ao carregar categorias", e);
+            }
+        };
+
+        carregarCategorias();
+    }, []);
+
+    useEffect(() => {
+        const desfazerEscuta = navigation.addListener("beforeRemove", (e) => {
+            if (salvamentoConcluido.current) return;
+            if (!temAlteracao) return;
+            e.preventDefault();
+
+            Alert.alert(
+                produtoParaEditar ? "Descartar Alterações?" : "Deseja descartar as informações?",
+                produtoParaEditar ? "Deseja descartar as alterações?" : "Deseja descartar as informações preenchidas?",
+                [
+                    { text: "Não", style: "cancel" },
+                    {
+                        text: "Sim",
+                        onPress: () => navigation.dispatch(e.data.action),
+                    },
+                ]
+            );
+        });
+
+        return desfazerEscuta;
+    }, [navigation, temAlteracao]);
+
     return (
-        <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Titulo */}
-            <Text>
-                {produtoParaEditar ? "Editar Anotação" : "Adicionar Anotação"}
-            </Text>
-
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            {/* Informações Basica */}
             <View>
-                {/* Input Nome */}
-                <View>
-                    <Text>Nome do Produto</Text>
-                    {nomeAlterado && <Text>*</Text>}
-                </View>
-                <TextInput value={nome} onChangeText={setNome} placeholder="Ex: Queijo Prato" />
+                {/* Titulo */}
+                <Text style={styles.titulo}>
+                    {produtoParaEditar ? "Editar Anotação" : "Adicionar Anotação"}
+                </Text>
 
-                {/* Input Numero */}
-                <View>
-                    <Text>Número do Produto</Text>
-                    {numeroAlterado && <Text>*</Text>}
+                <View style={{ marginVertical: 10, marginHorizontal: 5, gap: 8 }}>
+                    {/* Input Nome */}
+                    <View style={{ flexDirection: "row" }}>
+                        <Text style={styles.subTitulo}>Nome do Produto</Text>
+                        {nomeAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
+                    </View>
+                    <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: Queijo Prato" />
+
+                    {/* Input Numero */}
+                    <View style={{ flexDirection: "row" }}>
+                        <Text style={styles.subTitulo}>Número do Produto</Text>
+                        {numeroAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
+                    </View>
+                    <TextInput style={styles.input} value={numeroProduto} onChangeText={setNumeroProduto} placeholder="Ex: 00000000" keyboardType="numeric" />
                 </View>
-                <TextInput value={numeroProduto} onChangeText={setNumeroProduto} placeholder="Ex: 00000000" keyboardType="numeric" />
             </View>
 
-            <View>
-                {/* TIPO */}
-                <View>
-                    <Text>Tipo de Registro</Text>
-                    {tipoAlterado && <Text>*</Text>}
-                </View>
-                <View>
-                    {["Entrada", "Perda", "Personalizado"].map((t) => (
-                        <TouchableOpacity key={t} onPress={() => setTipo(t)} >
-                            <Text>{t}</Text>
-                        </TouchableOpacity>
-                    ))}
+            {/* Categorias */}
+            <View style={{ marginHorizontal: 5, gap: 8 }}>
+                <View style={{ flexDirection: "row" }}>
+                    <Text style={styles.subTitulo}>Tipo de Categoria</Text>
+                    {tipoAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                 </View>
 
-                {tipo === "Personalizado" && (
-                    <TextInput value={tipoPersonalizado} onChangeText={setTipoPersonalizado} placeholder="Digite o nome da categoria personalizada..." />
-                )}
+                <View style={{ marginHorizontal: 5 }}>
+                    {/* Padrões */}
+                    <View style={{ gap: 5 }}>
+                        {["Entrada", "Perda"].map((t) => {
+                            const ativo = tipo === t;
+                            const corBase = t === "Entrada" ? "#4CAF50" : "#F44336";
+                            const fundoTransparente = corBase + "1A";
+
+                            return (
+                                <TouchableOpacity key={t} onPress={() => { setTipo(t); setTipoPersonalizado(""); }} style={[styles.bntTipo, { borderColor: ativo ? corBase : "#DDD", backgroundColor: ativo ? corBase : fundoTransparente }]}>
+                                    <Text style={{ fontWeight: "bold", fontSize: 14, color: ativo ? "#FFF" : "#555" }}>{t}</Text>
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </View>
+
+                    {/* Personalizados */}
+                    <View>
+                        <TouchableOpacity onPress={() => { setTipo("Personalizado"); setTipoPersonalizado(""); }} style={[styles.bntTipo, { borderColor: tipo === "Personalizado" ? "#007BFF" : "#DDD", backgroundColor: tipo === "Personalizado" ? "#007BFF" : "#007BFF0D", borderStyle: tipo === "Personalizado" ? "solid" : "dashed", marginTop: 5 }]}>
+                            <Text style={{ fontWeight: "bold", fontSize: 14, color: tipo === "Personalizado" ? "#FFF" : "#007BFF" }}>
+                                Criar Categoria
+                            </Text>
+                        </TouchableOpacity>
+
+                        {tipo === "Personalizado" && (
+                            <TextInput value={tipoPersonalizado} onChangeText={setTipoPersonalizado} placeholder="Digite o nome da nova categoria" placeholderTextColor="#999" style={[styles.bntTipo, { borderColor: "#007BFF", paddingVertical: 10, paddingHorizontal: 12, fontSize: 14, backgroundColor: "#FFF", marginTop: 5 }]} />
+                        )}
+                    </View>
+
+                    {/* Já existentes */}
+                    {categoriasExistentes.length > 0 && (
+                        <View style={{ marginVertical: 5, gap: 5 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "700", color: "#666" }}>Criadas Anteriormente:</Text>
+
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+                                {categoriasExistentes.map((cat) => {
+                                    const ativo = tipo === "Personalizado" && tipoPersonalizado === cat;
+                                    const azulFundo = "#007BFF1F";
+
+                                    return (
+                                        <TouchableOpacity key={cat} onPress={() => { setTipo("Personalizado"); setTipoPersonalizado(cat); }} style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 50, borderWidth: 1.5, borderColor: ativo ? "#007BFF" : "#007BFF33", backgroundColor: ativo ? "#007BFF" : azulFundo, }}>
+                                            <Text style={{ fontSize: 13, fontWeight: "bold", color: ativo ? "#FFF" : "#007BFF" }}>
+                                                🏷️ {cat}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
+                </View>
             </View>
 
             {false && (
@@ -202,38 +300,22 @@ export default function FormScreen({ route, navigation }) {
 
             {/* Calculadora */}
             <View>
-                <View>
-                    <Text>Valor (R$)</Text>
-                    {valorAlterado && <Text>*</Text>}
+                <View style={{ flexDirection: "row", marginVertical: 5 }}>
+                    <Text style={styles.subTitulo}>Valor (R$)</Text>
+                    {valorAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                 </View>
 
                 <Calculadora valorInicial={valor} aoConfirmar={(valorCalculado) => setValor(valorCalculado)} />
             </View>
 
-            {/* Botão salvar, cancelar e retonar */}
-            <View>
-                {produtoParaEditar ? (
-                    <TouchableOpacity onPress={() => {
-                        Alert.alert(
-                            "Cancelar Alterações",
-                            "Deseja mesmo descartar as alterações feitas?",
-                            [
-                                { text: "Não" },
-                                { text: "Sim", onPress: () => navigation.goBack() }
-                            ]
-                        );
-                    }}
-                    >
-                        <Text>Cancelar</Text>
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Text>Voltar</Text>
-                    </TouchableOpacity>
-                )}
+            {/* Botão Salvar, Cancelar e Retonar */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 5, gap: 5 }}>
+                <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#666", backgroundColor: "#FFF" }]} onPress={() => navigation.goBack()}>
+                    <Text style={{ fontWeight: "bold", color: "#555", textAlign: "center" }}>{produtoParaEditar ? "Cancelar" : "Voltar"}</Text>
+                </TouchableOpacity>
 
-                <TouchableOpacity onPress={salvarAnotacao}>
-                    <Text>Salvar Registro</Text>
+                <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#2196F3", backgroundColor: "#2196F3" }]} onPress={salvarAnotacao}>
+                    <Text style={{ fontWeight: "bold", color: "#FFF", textAlign: "center" }}>Salvar Registro</Text>
                 </TouchableOpacity>
             </View>
 
@@ -253,4 +335,44 @@ export default function FormScreen({ route, navigation }) {
     )
 }
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+    // Geral
+    container: {
+        flex: 1,
+        marginTop: 40,
+        marginBottom: 50,
+        paddingHorizontal: 10,
+    },
+
+    // Titulo
+    titulo: {
+        fontSize: 23,
+        fontWeight: "bold",
+        color: "#777",
+        textAlign: "center"
+    },
+
+    // Formulario
+    subTitulo: {
+        fontSize: 14,
+        fontWeight: "800",
+        color: "#444"
+    },
+
+    // inputs
+    input: {
+        marginHorizontal: 5,
+        paddingHorizontal: 10,
+        borderWidth: 1.5,
+        borderColor: "#999",
+        borderRadius: 5,
+    },
+
+    // botões tipo
+    bntTipo: {
+        paddingVertical: 12,
+        alignItems: "center",
+        borderRadius: 8,
+        borderWidth: 1.5,
+    }
+})

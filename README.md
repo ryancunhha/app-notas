@@ -14,7 +14,7 @@ Um aplicativo móvel desenvolvido em React Native (Expo) para gerenciamento de n
 
 1. **Clone o repositório:**
 ```bash
-   git clone [https://github.com/ryancunhha/app-notas.git](https://github.com/ryancunhha/app-notas.git)
+   git clone https://github.com/ryancunhha/app-notas.git
 ```
 
 2. **Entre na pasta do projeto e instale as dependências**
@@ -77,5 +77,6 @@ Aqui está o progresso do desenvolvimento do aplicativo:
 - [ ] Implementar câmera
 - [ ] Implementar detecção de texto na câmera para preencher o nome e número do produto automaticamente ao tirar a foto.
 - [ ] Adicionar acessibilidade para o usuário ampliar o tamanho da fonte nas notas.
+- [ ] Adicionar notificações de lembrete.
 
 ---

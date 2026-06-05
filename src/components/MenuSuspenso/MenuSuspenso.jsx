@@ -1,55 +1,75 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from "react-native";
 
-const { width: LARGURA_TELA } = Dimensions.get("window");
-
-export default function MenuSuspenso({ visivel, aoFechar, posicaoBotao, versao, acoes }) {
-    if (!visivel || !posicaoBotao) return null;
-
-    const LARGURA_MENU = 180;
-    const { x, y, width, height } = posicaoBotao;
-
-    const topoMenu = y + height + 5;
-
-    let esquerdaMenu = x;
-
-    if (x + LARGURA_MENU > LARGURA_TELA) {
-        esquerdaMenu = x + width - LARGURA_MENU;
-    }
+export default function MenuSuspenso({ visivel, aoFechar, versao, acoes }) {
+    if (!visivel) return null;
 
     return (
         <Modal transparent={true} visible={visivel} animationType="fade" onRequestClose={aoFechar}>
-            <TouchableOpacity activeOpacity={1} onPress={aoFechar}>
-                <View style={[{ top: topoMenu, left: esquerdaMenu, width: LARGURA_MENU }]}>
-                    {versao === "postIt" && (
-                        <View>
-                            <TouchableOpacity onPress={() => { acoes.aoEditar(); aoFechar(); }}>
-                                <Text>Editar</Text>
-                            </TouchableOpacity>
+            <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={aoFechar}>
+                <View style={styles.container}>
+                    <View style={styles.conteudo}>
+                        {versao === "filtro" && (
+                            <>
+                                <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 12 }} onPress={() => { acoes.aoCompartilhar(); aoFechar(); }}>
+                                    <Text style={styles.texto}>Compartilhar</Text>
+                                </TouchableOpacity>
 
-                            {false && (<TouchableOpacity onPress={() => { acoes.aoVerImagem(); aoFechar(); }}>
-                                <Text>Ver Imagem</Text>
-                            </TouchableOpacity>)}
+                                {false && (
+                                    <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 12 }} onPress={() => { null; aoFechar(); }}>
+                                        <Text style={styles.texto}>Ampliar</Text>
+                                    </TouchableOpacity>
+                                )}
 
-                            <TouchableOpacity onPress={() => { acoes.aoExcluir(); aoFechar(); }}>
-                                <Text>Excluir</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                    
-                    {versao === "filtro" && (
-                        <View>
-                            <TouchableOpacity onPress={() => { acoes.aoLimparTudo(); aoFechar(); }}>
-                                <Text>Excluir Tudo</Text>
-                            </TouchableOpacity>
+                                {false && (
+                                    <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 12 }} onPress={() => { null; aoFechar(); }}>
+                                        <Text style={styles.texto}>Notificação</Text>
+                                    </TouchableOpacity>
+                                )}
 
-                            <TouchableOpacity onPress={() => { acoes.aoCompartilhar(); aoFechar(); }}>
-                                <Text>Compartilhar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                                <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 12 }} onPress={() => { acoes.aoLimparTudo(); aoFechar(); }}>
+                                    <Text style={[styles.texto, { color: "#FF5252" }]}>Limpar Tudo</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
                 </View>
             </TouchableOpacity>
         </Modal>
     )
 }
+
+const styles = StyleSheet.create({
+    // Fundo
+    overlay: {
+        flex: 1,
+    },
+
+    // Container
+    container: {
+        position: "absolute",
+        top: 105,
+        right: 30,
+        alignItems: "flex-end"
+    },
+    conteudo: {
+        backgroundColor: "#1E1E1E",
+        borderRadius: 8,
+        paddingVertical: 5,
+        minWidth: 170,
+    },
+
+    // Botão
+    botao: {
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        width: "100%",
+    },
+
+    // Texto
+    texto: {
+        color: "#FFF",
+        fontSize: 14,
+        fontWeight: "600",
+    },
+})
