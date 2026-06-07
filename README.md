@@ -71,9 +71,9 @@ Aqui está o progresso do desenvolvimento do aplicativo:
 - [x] Sistema de pesquisa por notas.
 - [x] Filtragem de notas por tipo.
 - [x] Compartilhamento de notas.
+- [x] Refinar o design e a identidade visual da interface do aplicativo.
 
 ### ⏳ Próximos Passos (O que falta fazer)
-- [ ] Refinar o design e a identidade visual da interface do aplicativo.
 - [ ] Implementar câmera
 - [ ] Implementar detecção de texto na câmera para preencher o nome e número do produto automaticamente ao tirar a foto.
 - [ ] Adicionar acessibilidade para o usuário ampliar o tamanho da fonte nas notas.

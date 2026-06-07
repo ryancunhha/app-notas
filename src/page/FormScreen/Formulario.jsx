@@ -300,7 +300,7 @@ export default function FormScreen({ route, navigation }) {
 
             {/* Calculadora */}
             <View>
-                <View style={{ flexDirection: "row", marginVertical: 5 }}>
+                <View style={{ flexDirection: "row", marginVertical: 10 }}>
                     <Text style={styles.subTitulo}>Valor (R$)</Text>
                     {valorAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                 </View>
@@ -346,6 +346,7 @@ const styles = StyleSheet.create({
 
     // Titulo
     titulo: {
+        marginVertical: 5,
         fontSize: 23,
         fontWeight: "bold",
         color: "#777",

@@ -7,6 +7,7 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
     // ESTADOS
     const [calculo, setCalculo] = useState("");
     const [cursorPos, setCursorPos] = useState(0);
+    const [preResultado, setPreResultado] = useState("");
     const calculoRef = useRef("");
     const cursorPosRef = useRef(0);
     const intervalRef = useRef(null);
@@ -21,7 +22,30 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
     useEffect(() => {
         calculoRef.current = calculo;
         cursorPosRef.current = cursorPos;
-        aoConfirmar(calculo);
+
+        let valorTratado = calculo.trim();
+        if (/[+\-×÷]$/.test(valorTratado)) {
+            valorTratado = valorTratado.slice(0, -1);
+        }
+        aoConfirmar(valorTratado);
+
+        try {
+            let expressao = calculo.replace(/\./g, "").replace(/,/g, ".").replace(/×/g, "*").replace(/÷/g, "/");
+
+            const temOperador = /[+*\/]/.test(expressao);
+            const terminaComNumero = /[0-9]$/.test(expressao);
+
+            if (temOperador && terminaComNumero) {
+                let resEv = eval(expressao);
+                let [int, dec] = Number(resEv.toFixed(6)).toString().split(".");
+                let intFormatado = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                setPreResultado(dec !== undefined ? `= ${intFormatado},${dec}` : `= ${intFormatado}`);
+            } else {
+                setPreResultado("");
+            }
+        } catch (e) {
+            setPreResultado("");
+        }
     }, [calculo, cursorPos]);
 
     const inserirCaractere = (char) => {
@@ -122,6 +146,10 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
             let expressao = calculo.replace(/\./g, "").replace(/,/g, ".").replace(/×/g, "*").replace(/÷/g, "/");
             if (!expressao) return;
 
+            if (/[+\-*\/]$/.test(expressao)) {
+                expressao = expressao.slice(0, -1);
+            }
+
             let resultado = eval(expressao);
 
             let [int, dec] = Number(resultado.toFixed(10)).toString().split(".");
@@ -136,89 +164,96 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         }
     };
 
-    const enviarValorParaOFormulario = () => {
-        const temOperador = /[+\-×÷]/.test(calculo);
+    const confirmarEEnviarValor = () => {
+        let valorTratado = calculo.trim();
 
-        if (temOperador) {
-            Alert.alert("Atenção", "Resolva o cálculo clicando no botão '=' antes de confirmar!");
+        if (!valorTratado || valorTratado === "0") {
+            aoConfirmar("");
+            if (aoFechar) aoFechar();
             return;
         }
 
-        aoConfirmar(calculo);
+        if (/[+\-×÷]$/.test(valorTratado)) {
+            valorTratado = valorTratado.slice(0, -1);
+        }
+
+        aoConfirmar(valorTratado);
+        if (aoFechar) aoFechar();
     };
 
     return (
-        <View>
+        <View style={styles.container}>
             {/* Visor */}
-            <View>
-                <TextInput ref={inputRef} value={calculo} caretHidden={false} selectionColor="#007BFF" onSelectionChange={(event) => setCursorPos(event.nativeEvent.selection.start)} showSoftInputOnFocus={false} />
+            <View style={styles.displayContainer}>
+                <TextInput style={styles.textoDisplay} scrollEnabled={true} ref={inputRef} value={calculo} caretHidden={false} selectionColor="#007BFF" onSelectionChange={(event) => setCursorPos(event.nativeEvent.selection.start)} showSoftInputOnFocus={false} multiline={true} />
+
+                {preResultado !== "" && (
+                    <Text style={styles.textoPreResultado}>{preResultado}</Text>
+                )}
             </View>
 
             {/* Teclado da Calculadora */}
-            <View>
-                <View>
-                    <TouchableOpacity onPress={limparTudo}>
-                        <Text>C</Text>
+            <View style={{ gap: 10 }}>
+                <View style={styles.linha}>
+                    <TouchableOpacity onPress={limparTudo} style={[styles.botao, styles.btnLimpar, { flex: 1.5, aspectRatio: "auto" }]}>
+                        <Text style={[styles.textoBotao, { color: "#FF5252" }]}>C</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity onPress={apagarUm} onLongPress={iniciarApagarContinuo} onPressOut={pararApagarContinuo}>
-                        <Text>⌫</Text>
+
+                    <TouchableOpacity style={[styles.botao, styles.btnAcaoLongo, { flex: 1.5, aspectRatio: "auto" }]} onPress={apagarUm} onLongPress={iniciarApagarContinuo} onPressOut={pararApagarContinuo}>
+                        <Text style={[styles.textoBotao, { color: "#007BFF" }]}>⌫</Text>
                     </TouchableOpacity>
-                    
-                    <View style={[styles.botao, styles.botaoInvisivel]} />
-                    
-                    <TouchableOpacity onPress={() => inserirCaractere("÷")}>
-                        <Text>÷</Text>
+
+                    <TouchableOpacity onPress={() => inserirCaractere("÷")} style={[styles.botao, styles.btnOperacao]}>
+                        <Text style={styles.textoOperacao}>÷</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View>
+                <View style={styles.linha}>
                     {[7, 8, 9].map((n) => (
-                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} >
-                            <Text>{n}</Text>
+                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} style={styles.botao}>
+                            <Text style={styles.textoBotao}>{n}</Text>
                         </TouchableOpacity>
                     ))}
-                    
-                    <TouchableOpacity onPress={() => inserirCaractere("×")}>
-                        <Text>×</Text>
+
+                    <TouchableOpacity onPress={() => inserirCaractere("×")} style={[styles.botao, styles.btnOperacao]}>
+                        <Text style={styles.textoOperacao}>×</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View>
+                <View style={styles.linha}>
                     {[4, 5, 6].map((n) => (
-                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} >
-                            <Text>{n}</Text>
+                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} style={styles.botao}>
+                            <Text style={styles.textoBotao}>{n}</Text>
                         </TouchableOpacity>
                     ))}
-                    <TouchableOpacity onPress={() => inserirCaractere("-")}>
-                        <Text>-</Text>
+                    <TouchableOpacity onPress={() => inserirCaractere("-")} style={[styles.botao, styles.btnOperacao]}>
+                        <Text style={styles.textoOperacao}>-</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View>
+                <View style={styles.linha}>
                     {[1, 2, 3].map((n) => (
-                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} >
-                            <Text>{n}</Text>
+                        <TouchableOpacity key={n} onPress={() => inserirCaractere(n.toString())} style={styles.botao}>
+                            <Text style={styles.textoBotao}>{n}</Text>
                         </TouchableOpacity>
                     ))}
 
-                    <TouchableOpacity onPress={() => inserirCaractere("+")}>
-                        <Text>+</Text>
+                    <TouchableOpacity onPress={() => inserirCaractere("+")} style={[styles.botao, styles.btnOperacao]}>
+                        <Text style={styles.textoOperacao}>+</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View>
-                    <View style={[styles.botao, styles.botaoInvisivel]} />
-                    <TouchableOpacity onPress={() => inserirCaractere("0")}>
-                        <Text>0</Text>
+                <View style={styles.linha}>
+                    <TouchableOpacity onPress={() => inserirCaractere("0")} style={[styles.botao, { flex: 2, aspectRatio: "auto" }]}>
+                        <Text style={styles.textoBotao}>0</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity onPress={() => inserirCaractere(",")}>
-                        <Text>,</Text>
+
+                    <TouchableOpacity onPress={() => inserirCaractere(",")} style={styles.botao}>
+                        <Text style={styles.textoBotao}>,</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity onPress={calcularResultado}>
-                        <Text>=</Text>
+
+                    <TouchableOpacity onPress={calcularResultado} style={[styles.botao, styles.btnIgual]}>
+                        <Text style={[styles.textoBotao, { color: "#FFF" }]}>=</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -226,4 +261,80 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
     );
 }
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+    // Geral
+    container: {
+        borderRadius: 16,
+        padding: 12,
+        width: "100%",
+        alignSelf: "center",
+    },
+
+    // Visor
+    displayContainer: {
+        backgroundColor: "#F7F9FC",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: "#E2E8F0",
+        height: 110,
+        justifyContent: "space-between",
+    },
+    textoDisplay: {
+        color: "#000",
+        fontSize: 28,
+        fontWeight: "bold",
+        textAlign: "right",
+        width: "100%",
+        height: 65,
+    },
+    textoPreResultado: {
+        color: "#777",
+        fontSize: 18,
+        fontWeight: "600",
+        textAlign: "right",
+        height: 24,
+    },
+
+    // Tecaldo
+    linha: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 10,
+    },
+    botao: {
+        flex: 1,
+        aspectRatio: 1.1,
+        backgroundColor: "#2D2D2D",
+        borderRadius: 12,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    botaoInvisivel: {
+        backgroundColor: "transparent",
+    },
+    textoBotao: {
+        color: "#E2E8F0",
+        fontSize: 20,
+        fontWeight: "600",
+    },
+    textoOperacao: {
+        color: "#007BFF",
+        fontSize: 22,
+        fontWeight: "bold",
+    },
+    btnOperacao: {
+        backgroundColor: "rgba(0, 123, 255, 0.12)",
+    },
+    btnLimpar: {
+        backgroundColor: "rgba(255, 82, 82, 0.1)",
+    },
+    btnAcaoLongo: {
+        backgroundColor: "rgba(0, 123, 255, 0.06)",
+    },
+    btnIgual: {
+        backgroundColor: "#007BFF",
+    },
+})
