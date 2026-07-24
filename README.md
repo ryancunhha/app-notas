@@ -9,6 +9,7 @@ Um aplicativo móvel desenvolvido em React Native (Expo) para gerenciamento de n
 ### Pré-requisitos
 * Node.js com NPM (ou o gerenciador de pacotes da sua preferência) instalado.
 * Aplicativo **Expo Go** instalado no seu celular (Android ou iOS).
+SKD 54 54.0.36.
 
 ### Passo a Passo
 

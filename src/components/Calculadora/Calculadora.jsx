@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Dimensions 
 
 const { height: ALTURA_TELA } = Dimensions.get("window");
 
-export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
+export default function Calculadora({ valorInicial, aoConfirmar, aoFechar }) {
     // ESTADOS
     const [calculo, setCalculo] = useState("");
     const [cursorPos, setCursorPos] = useState(0);
@@ -23,11 +23,9 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         calculoRef.current = calculo;
         cursorPosRef.current = cursorPos;
 
-        let valorTratado = calculo.trim();
-        if (/[+\-×÷]$/.test(valorTratado)) {
-            valorTratado = valorTratado.slice(0, -1);
+        if (aoConfirmar) {
+            aoConfirmar(calculo);
         }
-        aoConfirmar(valorTratado);
 
         try {
             let expressao = calculo.replace(/\./g, "").replace(/,/g, ".").replace(/×/g, "*").replace(/÷/g, "/");
@@ -48,6 +46,7 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         }
     }, [calculo, cursorPos]);
 
+    // tratamento dos caracteres
     const inserirCaractere = (char) => {
         const operadoresPermitidos = ["+", "-", "×", "÷"];
         const ehOperador = operadoresPermitidos.includes(char);
@@ -89,7 +88,7 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         }
 
         if (["+", "-", "×", "÷", ","].includes(ultimoChar) && (ehOperador || ehVirgula)) return;
-        if (textoAtual.length === 0 && ["+", "×", "÷", ","].includes(char)) return;
+        if (textoAtual.length === 0 && [","].includes(char)) return;
 
         let novoTextoRaw = textoAtual.slice(0, posAtual) + char + textoAtual.slice(posAtual);
 
@@ -112,6 +111,7 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         setCursorPos(posAtual + (diferenca > 0 ? diferenca : 1));
     };
 
+    // botão apagar unico
     const apagarUm = () => {
         const textoAtual = calculoRef.current;
         const posAtual = cursorPosRef.current;
@@ -123,12 +123,14 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         }
     };
 
+    // BOTAO APAGAR UNICO
     const iniciarApagarContinuo = () => {
         if (!intervalRef.current) {
             intervalRef.current = setInterval(apagarUm, 80);
         }
     };
 
+    // BOTÂO DE APAGAR UNICO
     const pararApagarContinuo = () => {
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -136,6 +138,7 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
         }
     };
 
+    // BOTÂO C
     const limparTudo = () => {
         setCalculo("");
         setCursorPos(0);
@@ -167,18 +170,34 @@ export default function CalculadoraSamsung({ valorInicial, aoConfirmar }) {
     const confirmarEEnviarValor = () => {
         let valorTratado = calculo.trim();
 
-        if (!valorTratado || valorTratado === "0") {
-            aoConfirmar("");
-            if (aoFechar) aoFechar();
-            return;
-        }
-
-        if (/[+\-×÷]$/.test(valorTratado)) {
+        if (valorTratado.endsWith('+') || valorTratado.endsWith('-') || valorTratado.endsWith('×') || valorTratado.endsWith('÷')) {
             valorTratado = valorTratado.slice(0, -1);
         }
 
+        if (!valorTratado || valorTratado === "0") {
+            aoConfirmar("");
+            if (typeof aoFechar === 'function') aoFechar();
+            return;
+        }
+
+        let textoParaVerificar = valorTratado.startsWith('-') ? valorTratado.substring(1) : valorTratado;
+
+        const temOperadorPendente =
+            textoParaVerificar.includes('+') ||
+            textoParaVerificar.includes('-') ||
+            textoParaVerificar.includes('×') ||
+            textoParaVerificar.includes('÷');
+
+        if (temOperadorPendente) {
+            Alert.alert(
+                "Cálculo Incompleto",
+                "Aperte o botão '=' para resolver a conta antes de confirmar."
+            );
+            return;
+        }
+
         aoConfirmar(valorTratado);
-        if (aoFechar) aoFechar();
+        if (typeof aoFechar === 'function') aoFechar();
     };
 
     return (
@@ -279,23 +298,23 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         borderWidth: 1,
         borderColor: "#E2E8F0",
-        height: 110,
+        height: 150,
         justifyContent: "space-between",
     },
     textoDisplay: {
         color: "#000",
-        fontSize: 28,
+        fontSize: 36,
         fontWeight: "bold",
         textAlign: "right",
         width: "100%",
-        height: 65,
+        height: 98,
     },
     textoPreResultado: {
         color: "#777",
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: "600",
         textAlign: "right",
-        height: 24,
+        height: 30,
     },
 
     // Tecaldo

@@ -28,7 +28,7 @@ export default function FormScreen({ route, navigation }) {
     const nomeAlterado = produtoParaEditar && nome.trim() !== produtoParaEditar.nome;
     const numeroAlterado = produtoParaEditar && numeroProduto.trim() !== produtoParaEditar.numeroProduto;
     const tipoAlterado = produtoParaEditar && tipoFinalAtual !== produtoParaEditar.tipo;
-    const valorAlterado = produtoParaEditar && valor.trim() !== produtoParaEditar.valor;
+    const valorAlterado = produtoParaEditar && String(valor).trim() !== String(produtoParaEditar.valor) || String(valor).trim() !== "";
     const imagemAlterada = produtoParaEditar && imagem !== produtoParaEditar.imagem;
     const temAlteracao = produtoParaEditar ? (nomeAlterado || numeroAlterado || tipoAlterado || valorAlterado || imagemAlterada) : (nome.trim() !== "" || numeroProduto.trim() !== "" || valor.trim() !== "" || tipo !== "Entrada" || tipoPersonalizado.trim() !== "" || imagem !== null);
 
@@ -66,6 +66,14 @@ export default function FormScreen({ route, navigation }) {
 
         if (isNaN(numeroProduto)) {
             Alert.alert("Erro", "O número do produto deve conter apenas números.");
+            return;
+        }
+
+        let valorTexto = String(valor).trim();
+        let valorSemNegativo = valorTexto.startsWith('-') ? valorTexto.substring(1) : valorTexto;
+
+        if (valorSemNegativo.includes('+') || valorSemNegativo.includes('-') || valorSemNegativo.includes('×') || valorSemNegativo.includes('÷')) {
+            Alert.alert("Cálculo Incompleto", "O campo de valor possui uma conta (4+4). Resolva o cálculo antes de salvar o produto.");
             return;
         }
 
@@ -193,9 +201,20 @@ export default function FormScreen({ route, navigation }) {
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* Informações Basica */}
             <View>
+                {/* Botão Salvar, Cancelar e Retonar */}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12, gap: 5 }}>
+                    <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#666", backgroundColor: "#FFF" }]} onPress={() => navigation.goBack()}>
+                        <Text style={{ fontWeight: "bold", color: "#555", textAlign: "center" }}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#2196F3", backgroundColor: "#2196F3" }]} onPress={salvarAnotacao}>
+                        <Text style={{ fontWeight: "bold", color: "#FFF", textAlign: "center" }}>Salvar Registro</Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Titulo */}
                 <Text style={styles.titulo}>
-                    {produtoParaEditar ? "Editar Anotação" : "Adicionar Anotação"}
+                    {produtoParaEditar ? "Editar" : "Adicionar"}
                 </Text>
 
                 <View style={{ marginVertical: 10, marginHorizontal: 5, gap: 8 }}>
@@ -204,14 +223,14 @@ export default function FormScreen({ route, navigation }) {
                         <Text style={styles.subTitulo}>Nome do Produto</Text>
                         {nomeAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                     </View>
-                    <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: Queijo Prato" />
+                    <TextInput style={styles.input} value={nome} onChangeText={setNome} />
 
                     {/* Input Numero */}
                     <View style={{ flexDirection: "row" }}>
                         <Text style={styles.subTitulo}>Número do Produto</Text>
                         {numeroAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                     </View>
-                    <TextInput style={styles.input} value={numeroProduto} onChangeText={setNumeroProduto} placeholder="Ex: 00000000" keyboardType="numeric" />
+                    <TextInput style={styles.input} value={numeroProduto} onChangeText={setNumeroProduto} keyboardType="numeric" />
                 </View>
             </View>
 
@@ -247,7 +266,7 @@ export default function FormScreen({ route, navigation }) {
                         </TouchableOpacity>
 
                         {tipo === "Personalizado" && (
-                            <TextInput value={tipoPersonalizado} onChangeText={setTipoPersonalizado} placeholder="Digite o nome da nova categoria" placeholderTextColor="#999" style={[styles.bntTipo, { borderColor: "#007BFF", paddingVertical: 10, paddingHorizontal: 12, fontSize: 14, backgroundColor: "#FFF", marginTop: 5 }]} />
+                            <TextInput value={tipoPersonalizado} onChangeText={setTipoPersonalizado} placeholder="Digite o nome da nova categoria" placeholderTextColor="#999" style={[styles.input, { borderColor: "#007BFF", backgroundColor: "#FFF", marginTop: 5 }]} />
                         )}
                     </View>
 
@@ -262,8 +281,8 @@ export default function FormScreen({ route, navigation }) {
                                     const azulFundo = "#007BFF1F";
 
                                     return (
-                                        <TouchableOpacity key={cat} onPress={() => { setTipo("Personalizado"); setTipoPersonalizado(cat); }} style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 50, borderWidth: 1.5, borderColor: ativo ? "#007BFF" : "#007BFF33", backgroundColor: ativo ? "#007BFF" : azulFundo, }}>
-                                            <Text style={{ fontSize: 13, fontWeight: "bold", color: ativo ? "#FFF" : "#007BFF" }}>
+                                        <TouchableOpacity key={cat} onPress={() => { setTipo("Personalizado"); setTipoPersonalizado(cat); }} style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 5, borderWidth: 1.5, borderColor: ativo ? "#007BFF" : "#007BFF33", backgroundColor: ativo ? "#007BFF" : azulFundo, }}>
+                                            <Text style={{ fontSize: 15, fontWeight: "bold", color: ativo ? "#FFF" : "#007BFF" }}>
                                                 🏷️ {cat}
                                             </Text>
                                         </TouchableOpacity>
@@ -301,26 +320,15 @@ export default function FormScreen({ route, navigation }) {
             {/* Calculadora */}
             <View>
                 <View style={{ flexDirection: "row", marginVertical: 10 }}>
-                    <Text style={styles.subTitulo}>Valor (R$)</Text>
+                    <Text style={styles.subTitulo}>Valor</Text>
                     {valorAlterado && <Text style={{ color: "#F44336" }}>*</Text>}
                 </View>
 
                 <Calculadora valorInicial={valor} aoConfirmar={(valorCalculado) => setValor(valorCalculado)} />
             </View>
 
-            {/* Botão Salvar, Cancelar e Retonar */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 5, gap: 5 }}>
-                <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#666", backgroundColor: "#FFF" }]} onPress={() => navigation.goBack()}>
-                    <Text style={{ fontWeight: "bold", color: "#555", textAlign: "center" }}>{produtoParaEditar ? "Cancelar" : "Voltar"}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.bntTipo, { flex: 1, borderColor: "#2196F3", backgroundColor: "#2196F3" }]} onPress={salvarAnotacao}>
-                    <Text style={{ fontWeight: "bold", color: "#FFF", textAlign: "center" }}>Salvar Registro</Text>
-                </TouchableOpacity>
-            </View>
-
             {/* MODAL */}
-            <Modal visible={cameraVisivel} transparent={false} animationType="slide">
+            <Modal visible={cameraVisivel} transparent={false}>
                 <CameraView ref={cameraRef}>
                     <TouchableOpacity>
                         <Text>Voltar</Text>
@@ -346,8 +354,8 @@ const styles = StyleSheet.create({
 
     // Titulo
     titulo: {
-        marginVertical: 5,
-        fontSize: 23,
+        marginVertical: 16,
+        fontSize: 26,
         fontWeight: "bold",
         color: "#777",
         textAlign: "center"
@@ -355,13 +363,14 @@ const styles = StyleSheet.create({
 
     // Formulario
     subTitulo: {
-        fontSize: 14,
+        fontSize: 17,
         fontWeight: "800",
         color: "#444"
     },
 
     // inputs
     input: {
+        fontSize: 16,
         marginHorizontal: 5,
         paddingHorizontal: 10,
         borderWidth: 1.5,
